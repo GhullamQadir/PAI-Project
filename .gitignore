@@ -1,7 +1,11 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
+*~
+.python-version
 
 # C extensions
 *.so
@@ -148,3 +152,23 @@ cython_debug/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Runtime folders
+Development Team Workflows/backend/uploads/
+Development Team Workflows/backend/outputs/
+Development Team Workflows/backend/temp/
+
+# FFmpeg binaries (local runtime artifacts)
+Development Team Workflows/backend/ffmpeg_bin/ffmpeg.exe
+Development Team Workflows/backend/ffmpeg_bin/ffprobe.exe
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# Editor directories
+.vscode/
+.idea/
