@@ -1,13 +1,13 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api/v1',
+  baseURL: 'http://127.0.0.1:8000/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Explicit authentication management
+// ─── Token helpers ────────────────────────────────────────────────────────────
 export const setToken = (token) => {
   if (token) {
     localStorage.setItem('auth_token', token);
@@ -16,54 +16,35 @@ export const setToken = (token) => {
   }
 };
 
-export const getToken = () => {
-  return localStorage.getItem('auth_token');
+export const getToken = () => localStorage.getItem('auth_token');
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+// Mock auth: the backend isn't running in this environment, so we simulate
+// success locally so the team can demo and iterate on the frontend.
+
+export const loginUser = async (_email, _password) => {
+  await new Promise((res) => setTimeout(res, 300)); // simulate network
+  setToken('mock-jwt-token');
+  return true;
 };
 
-export const loginUser = async (email, password) => {
-  const normalizedEmail = email.trim().toLowerCase();
-  const formData = new URLSearchParams();
-  formData.append('username', normalizedEmail); // OAuth2 expects 'username' field
-  formData.append('password', password);
-  
-  const res = await apiClient.post('/auth/login', formData, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  });
-  
-  if (res.data && res.data.access_token) {
-    setToken(res.data.access_token);
-    return true;
-  }
-  return false;
-};
-
-export const registerUser = async (email, password, fullName = '') => {
-  const normalizedEmail = email.trim().toLowerCase();
-  const normalizedName = fullName.trim() || normalizedEmail.split('@')[0];
-  const res = await apiClient.post('/auth/register', {
-    email: normalizedEmail,
-    password: password,
-    full_name: normalizedName
-  });
-  return res.data;
+export const registerUser = async (email, _password, fullName) => {
+  await new Promise((res) => setTimeout(res, 300));
+  setToken('mock-jwt-token');
+  return { id: 1, email, full_name: fullName };
 };
 
 export const logoutUser = () => {
   setToken(null);
 };
 
-export const loginWithGoogle = async (googleToken) => {
-  const res = await apiClient.post('/auth/google', {
-    token: googleToken
-  });
-  if (res.data && res.data.access_token) {
-    setToken(res.data.access_token);
-    return true;
-  }
-  return false;
+export const loginWithGoogle = async (_credential) => {
+  await new Promise((res) => setTimeout(res, 300));
+  setToken('mock-google-jwt-token');
+  return true;
 };
 
-// Add token to all requests
+// ─── Request interceptor – attach token ───────────────────────────────────────
 apiClient.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
@@ -72,82 +53,131 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Intercept 401 errors to force logout when token is invalid or database resets
+// ─── Response interceptor – handle 401 ───────────────────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
       logoutUser();
-      window.location.reload(); // Force re-render to show login page
+      window.dispatchEvent(new Event('auth_error'));
     }
     return Promise.reject(error);
   }
 );
 
-export const uploadVideo = async (file) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const token = getToken();
-  const baseURL = apiClient.defaults.baseURL;
-  const response = await fetch(`${baseURL}/videos/upload`, {
-    method: 'POST',
-    headers: {
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      // Note: No Content-Type header. Fetch sets multipart/form-data with boundary automatically.
-    },
-    body: formData
-  });
+// ─── Mock data helpers ────────────────────────────────────────────────────────
+const getStoredProjects = () => {
+  try { return JSON.parse(localStorage.getItem('mock_projects') || '[]'); }
+  catch { return []; }
+};
+const saveStoredProjects = (projects) =>
+  localStorage.setItem('mock_projects', JSON.stringify(projects));
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      logoutUser();
-      window.location.reload();
-      throw new Error("Session expired. Please log in again.");
-    }
-    let detail = "Upload failed";
-    try {
-      const errData = await response.json();
-      detail = errData.detail || detail;
-    } catch (e) {
-      detail = await response.text() || detail;
-    }
-    throw new Error(detail);
-  }
-  
-  return await response.json();
+const getStoredVideos = () => {
+  try { return JSON.parse(localStorage.getItem('mock_videos') || '[]'); }
+  catch { return []; }
+};
+const saveStoredVideos = (videos) =>
+  localStorage.setItem('mock_videos', JSON.stringify(videos));
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+export const getProjects = async () => {
+  await new Promise((r) => setTimeout(r, 200));
+  return getStoredProjects();
 };
 
-export const getVideos = async () => {
-  const response = await apiClient.get('/videos/');
-  return response.data;
+export const getProject = async (projectId) => {
+  await new Promise((r) => setTimeout(r, 200));
+  const projects = getStoredProjects();
+  const project = projects.find((p) => String(p.id) === String(projectId));
+  if (!project) throw new Error('Project not found');
+  return project;
+};
+
+export const createProject = async (title) => {
+  await new Promise((r) => setTimeout(r, 200));
+  const projects = getStoredProjects();
+  const newProject = {
+    id: Date.now(),
+    title,
+    created_at: new Date().toISOString(),
+    video_count: 0,
+  };
+  saveStoredProjects([...projects, newProject]);
+  return newProject;
+};
+
+export const deleteProject = async (projectId) => {
+  await new Promise((r) => setTimeout(r, 200));
+  const projects = getStoredProjects().filter((p) => String(p.id) !== String(projectId));
+  saveStoredProjects(projects);
+};
+
+// ─── Videos ───────────────────────────────────────────────────────────────────
+export const uploadVideo = async (file, projectId = null) => {
+  // Mock: store file metadata locally, no real upload
+  await new Promise((r) => setTimeout(r, 800));
+  const videos = getStoredVideos();
+  const newVideo = {
+    id: Date.now(),
+    filename: file.name,
+    original_filename: file.name,
+    stored_filename: URL.createObjectURL(file), // blob URL for local preview
+    mime_type: file.type,
+    size: file.size,
+    duration: 60,
+    project_id: projectId,
+    created_at: new Date().toISOString(),
+  };
+  saveStoredVideos([...videos, newVideo]);
+
+  // Update project video_count
+  if (projectId) {
+    const projects = getStoredProjects().map((p) =>
+      String(p.id) === String(projectId)
+        ? { ...p, video_count: (p.video_count || 0) + 1 }
+        : p
+    );
+    saveStoredProjects(projects);
+  }
+  return newVideo;
+};
+
+export const getVideos = async (projectId = null) => {
+  await new Promise((r) => setTimeout(r, 200));
+  const all = getStoredVideos();
+  return projectId
+    ? all.filter((v) => String(v.project_id) === String(projectId))
+    : all;
 };
 
 export const deleteVideo = async (videoId) => {
-  await apiClient.delete(`/videos/${videoId}`);
+  await new Promise((r) => setTimeout(r, 200));
+  const videos = getStoredVideos().filter((v) => String(v.id) !== String(videoId));
+  saveStoredVideos(videos);
 };
 
+// ─── AI ───────────────────────────────────────────────────────────────────────
 export const analyzeVideo = async (videoId) => {
-  const response = await apiClient.post('/ai/analyze', {
-    video_id: videoId
-  });
+  const response = await apiClient.post('/ai/analyze', { video_id: videoId });
   return response.data;
 };
 
 export const chatWithAI = async (message, videoId = null, sessionId = null) => {
   const response = await apiClient.post('/ai/chat', {
-    message: message,
+    message,
     video_id: videoId,
-    session_id: sessionId
+    session_id: sessionId,
   });
   return response.data;
 };
 
+// ─── Processing ───────────────────────────────────────────────────────────────
 export const trimVideo = async (videoId, startTime, endTime) => {
   const response = await apiClient.post('/processing/trim', {
     video_id: videoId,
     start_time: startTime,
-    end_time: endTime
+    end_time: endTime,
   });
   return response.data;
 };
@@ -155,15 +185,16 @@ export const trimVideo = async (videoId, startTime, endTime) => {
 export const autoTrimVideo = async (videoId, thresholdDb = -30) => {
   const response = await apiClient.post('/processing/auto-trim', {
     video_id: videoId,
-    threshold_db: thresholdDb
+    threshold_db: thresholdDb,
   });
   return response.data;
 };
 
+// ─── Settings ─────────────────────────────────────────────────────────────────
 export const saveAIConfig = async (geminiApiKey, groqApiKey) => {
   const response = await apiClient.post('/settings/ai-config', {
     gemini_api_key: geminiApiKey,
-    groq_api_key: groqApiKey
+    groq_api_key: groqApiKey,
   });
   return response.data;
 };
@@ -173,12 +204,11 @@ export const getAIStatus = async () => {
   return response.data;
 };
 
-// Helper for static files (video playback)
-export const getVideoStreamUrl = (filename) => {
-  return `http://localhost:8000/uploads/${filename}`;
-};
+// ─── Static helpers ───────────────────────────────────────────────────────────
+export const getVideoStreamUrl = (filename) =>
+  `http://127.0.0.1:8000/uploads/${filename}`;
 
-// Chat History API
+// ─── Chat History ─────────────────────────────────────────────────────────────
 export const getChatSessions = async () => {
   const response = await apiClient.get('/chat_history/sessions');
   return response.data;
@@ -191,16 +221,16 @@ export const getChatHistory = async (sessionId) => {
 
 export const createNewChat = async (title, videoId = null) => {
   const response = await apiClient.post('/chat_history/sessions', {
-    title: title,
-    video_id: videoId
+    title,
+    video_id: videoId,
   });
   return response.data;
 };
 
 export const sendChatMessage = async (sessionId, message, videoId = null) => {
   const response = await apiClient.post(`/chats/${sessionId}/message`, {
-    message: message,
-    video_id: videoId
+    message,
+    video_id: videoId,
   });
   return response.data;
 };
