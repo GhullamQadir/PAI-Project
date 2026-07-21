@@ -1,15 +1,27 @@
-import React, { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import React, { useState, useEffect } from 'react';
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { loginUser, registerUser, loginWithGoogle } from '../api/client';
 import './Auth.css';
 
-const Auth = ({ onLoginSuccess }) => {
-  const [isLogin, setIsLogin] = useState(true);
+const Auth = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(location.pathname !== '/register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setIsLogin(location.pathname !== '/register');
+    setError('');
+  }, [location.pathname]);
+
+  const handleSuccess = () => {
+    navigate('/dashboard', { replace: true });
+  };
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setError('');
@@ -17,7 +29,7 @@ const Auth = ({ onLoginSuccess }) => {
     try {
       const success = await loginWithGoogle(credentialResponse.credential);
       if (success) {
-        onLoginSuccess();
+        handleSuccess();
       } else {
         setError('Google Login failed. Please try again.');
       }
@@ -62,7 +74,7 @@ const Auth = ({ onLoginSuccess }) => {
       if (isLogin) {
         const success = await loginUser(normalizedEmail, password);
         if (success) {
-          onLoginSuccess();
+          handleSuccess();
         } else {
           setError('Invalid credentials');
         }
@@ -70,15 +82,16 @@ const Auth = ({ onLoginSuccess }) => {
         const registeredUser = await registerUser(normalizedEmail, password, normalizedFullName);
         if (!registeredUser) {
           setError('Registration failed. Please try again.');
+          setIsLoading(false);
           return;
         }
 
         const success = await loginUser(normalizedEmail, password);
         if (success) {
-          onLoginSuccess();
+          handleSuccess();
         } else {
           setError('Registration successful, but login failed. Please try logging in manually.');
-          setIsLogin(true);
+          navigate('/login');
         }
       }
     } catch (err) {
@@ -158,24 +171,26 @@ const Auth = ({ onLoginSuccess }) => {
         </div>
 
         <div className="google-auth-wrapper" style={{ display: 'flex', justifyContent: 'center' }}>
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => {
-              console.error('Google Login Failed');
-              setError('Google Login Failed. Please try again.');
-            }}
-            theme="filled_black"
-            shape="rectangular"
-            text="continue_with"
-          />
+          <GoogleOAuthProvider clientId="dummy-client-id">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                console.error('Google Login Failed');
+                setError('Google Login Failed. Please try again.');
+              }}
+              theme="filled_black"
+              shape="rectangular"
+              text="continue_with"
+            />
+          </GoogleOAuthProvider>
         </div>
 
         <div className="auth-footer">
           <p>
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <span className="auth-toggle" onClick={() => { setIsLogin(!isLogin); setError(''); }}>
+            <Link to={isLogin ? '/register' : '/login'} className="auth-toggle">
               {isLogin ? 'Sign up' : 'Log in'}
-            </span>
+            </Link>
           </p>
         </div>
       </div>
