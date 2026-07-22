@@ -1,0 +1,37 @@
+# Core
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+
+# Database
+sqlalchemy
+alembic
+aiosqlite
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# AI Services
+google-generativeai
+
+# Video Processing
+ffmpeg-python
+
+# File Handling
+aiofiles
+python-magic-bin  # Use python-magic-bin on Windows (includes libmagic)
+
+# Utilities
+pydantic-extra-types
+email-validator
+httpx
+tenacity
+
+# Testing
+pytest
+pytest-asyncio
+
