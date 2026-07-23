@@ -3,6 +3,7 @@ from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 import os
+from pathlib import Path 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # Database
-    DATABASE_URL: str = f"sqlite+aiosqlite:///{os.path.join(BASE_DIR, 'app.db').replace('\\', '/')}"
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{Path(BASE_DIR) / 'app.db'}"
 
     # Security
     SECRET_KEY: str = Field(..., min_length=32)
